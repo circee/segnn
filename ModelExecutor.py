@@ -1,7 +1,7 @@
 from typing import List, Literal, Tuple
 from e3nn.o3 import Irreps
 from abc import abstractmethod, ABC
-from Model import SEMPNN, SEConv, SETransformer
+from Model import SEMPNN, SEConv, SETransformer, SEMPRelaxed
 from Model.BalancedIrreps import BalancedIrreps
 from Dataset.CrystalSO3Dataset import CrystalSO3Dataset
 import json
@@ -23,7 +23,7 @@ class ModelExecutor(ABC):
                 train_data.extend(json.load(validation_data))
                 with open(f"{self.default_data_path}/test/data.json") as test_data:
                     test_data = json.load(test_data)
-        with open(f"./Dataset/atom_init.json") as atom_init:
+        with open(f"./Dataset/short_atom_init.json") as atom_init:
             atom_init = json.load(atom_init)
         return (self.dataset_class(train_data, atom_init, config["lmax_h"], radius=config["radius"], 
                                    max_neighbors=config["max_neighbors"], normalize=config["normalize"]), 
@@ -81,6 +81,12 @@ class ModelExecutor(ABC):
                                 num_prepool_layers=config["num_prepool_layers"], num_postpool_layers=config["num_postpool_layers"],
                                 output_irreps_lst=self.output_irreps_lst, norm=config["layer_norm"], max_radius=config["radius"], 
                                 pooling=config["pooling"])
+        elif "relaxed" == config["model"]:
+            print('Relaxed model')
+            self.model = self.setup_relaxed(num_atom_feats=num_atom_feats, lmax_h=config["lmax_h"], 
+                                hidden_features=config["hidden_features"], num_graph_layers=config["num_graph_layers"],
+                                num_prepool_layers=config["num_prepool_layers"], num_postpool_layers=config["num_postpool_layers"],
+                                output_irreps_lst=self.output_irreps_lst, norm=config["layer_norm"], pooling=config["pooling"])
         else:
             raise Exception("No such model of that type")
             
@@ -220,4 +226,42 @@ class ModelExecutor(ABC):
             additional_message_irreps=additional_message_irreps,
             norm=norm,
             max_radius=max_radius,
+            pooling=pooling)
+    
+    def setup_relaxed(self, num_atom_feats: int, lmax_h: int, hidden_features: int, num_graph_layers: int, 
+                    num_prepool_layers: int, num_postpool_layers: int, output_irreps_lst: List[Irreps],
+                    norm: Literal["none", "batch"], pooling: Literal["mean", "add", "max"]):
+        """
+        Sets up a SEConv model based on the parameters provided.
+
+        Args:
+            num_atom_feats: How many atomic features will be provided
+            lmax_h: The maximum l for the hidden layer
+            hidden_features: How many features in the hidden layers
+            num_graph_layers: How many hidden layers of graph interaction
+            num_prepool_layers: How many linear layers on just node values
+            num_postpool_layers: How many layers before final output after pooling
+            conv_type: Either linear or nonlinear convolutions
+            output_irreps_lst: The list of outputs of the model
+            norm: The layer normalization the model may employ
+            pooling: How to pool the nodes together
+
+        Returns the specified SEConv model.
+        """
+        (input_irreps, 
+        edge_attr_irreps, 
+        node_attr_irreps, 
+        additional_message_irreps, 
+        hidden_irreps) = self.setup_irreps(num_atom_feats, lmax_h, hidden_features)
+
+        return SEMPRelaxed(input_irreps,
+            hidden_irreps,
+            output_irreps_lst,
+            edge_attr_irreps,
+            node_attr_irreps,
+            num_graph_layers=num_graph_layers,
+            num_prepool_layers=num_prepool_layers,
+            num_postpool_layers=num_postpool_layers,
+            additional_message_irreps=additional_message_irreps,
+            norm=norm,
             pooling=pooling)

@@ -34,4 +34,3 @@ class SEConv(SEGNN):
                     additional_message_irreps=self.additional_message_irreps,
                     conv_type=self.conv_type,
                 )
-

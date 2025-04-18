@@ -1,5 +1,3 @@
-import torch.utils
-import torch.utils.data
 from Runner import SEED, NUM_WORKERS
 from ModelExecutor import ModelExecutor
 from abc import ABCMeta, abstractmethod
@@ -24,7 +22,6 @@ class Evaluator(ModelExecutor, metaclass=ABCMeta):
         args.add_argument("model", help="The model weight to evaluate", type=str)
         args.add_argument("config", help="The configuration file that model was built on")
         args.add_argument("save", help="Where to save the heatmap to.")
-        args.add_argument("--all", action="store_true", help="Use all the data rather than the test set.")
         args = args.parse_args()
 
         with open(args.config) as f:
@@ -41,11 +38,9 @@ class Evaluator(ModelExecutor, metaclass=ABCMeta):
         torch.manual_seed(SEED)
         torch.backends.cudnn.benchmark = True
 
-        train_dataset, test_dataset = self.setup_datasets(self.config)
-        num_atom_feats = test_dataset[0].x.shape[-1]
+        _, test_dataset = self.setup_datasets(self.config)
+        num_atom_feats = test_dataset[0].x.shape[-1] 
 
-        if args.all:
-            test_dataset = torch.utils.data.ConcatDataset([train_dataset, test_dataset])
         self.test_loader = DataLoader(
             test_dataset,
             batch_size=config["batch_size"],
@@ -62,9 +57,31 @@ class Evaluator(ModelExecutor, metaclass=ABCMeta):
         with open(f"{self.default_data_path}/coef_stats.json") as f:
             self.normalizer = Normalizer(json.load(f), self.device)
 
-    @abstractmethod
     def main(self):
         """
         Evaluates a model over the test dataset
         """
-        raise NotImplementedError("Fill this in with what you want to evaluate")
+        mae = self.evaluate_results()
+        self.make_mae_heatmap(mae)
+
+    @abstractmethod
+    def evaluate_results(self):
+        """
+        Evaluate one run of the test data. 
+
+        Returns:
+            A tensor of errorwise components
+        """
+        raise NotImplementedError("Each subclass must implement evaluation on its own.")
+
+    def make_mae_heatmap(self, mae: torch.Tensor):
+        """
+        Produces a heatmap of mae to show component wise error.
+
+        Args:
+            mae: MAE in the shape of the tensor.
+        """
+        assert len(mae.shape) == 2
+        mae = mae.cpu().numpy()
+        sns.heatmap(mae, annot=True, vmin=0, fmt=".2f")
+        plt.savefig(self.config['save'])
