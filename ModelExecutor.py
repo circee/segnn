@@ -102,7 +102,10 @@ class ModelExecutor(ABC):
         Returns all the required irreps
         """
         # Scalar one hot encoding
-        input_irreps = Irreps([(num_atom_feats, (0, 1))])
+        input_irreps = Irreps([(num_atom_feats, (0, 1))]) 
+        
+        #input_irreps = Irreps("126x0e + 1x1e") #manually set irreps for 1x1e force vector 
+        print('Input irrep type:', input_irreps)
         # Irreps from relative position between atoms based on spherical harmonics
         edge_attr_irreps = Irreps.spherical_harmonics(lmax_h)
         node_attr_irreps = Irreps.spherical_harmonics(lmax_h)

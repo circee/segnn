@@ -50,7 +50,11 @@ class MultiRunner(Runner):
                 pred = self.model(data)[0]
 
                 # Compute losses
-                loss = l1_loss(pred, data.y) 
+                if train:
+                    loss = l1_loss(pred, data.y) #l1_loss(pred, data.y) 
+                else:
+                    loss = l1_loss(pred, data.y)
+
 
                 assert not torch.isnan(loss), "Loss has hit Nan, stopping early."
 

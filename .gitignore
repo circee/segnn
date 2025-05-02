@@ -2,3 +2,4 @@
 /__pycache__
 /trained_models
 /wandb
+/Dataset/WF_CE_database_with_forces.json

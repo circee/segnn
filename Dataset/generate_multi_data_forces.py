@@ -5,9 +5,9 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 import warnings
 
-ROOT = Path("./Dataset/Multi")
+ROOT = Path("Multi")
 ROOT.mkdir(exist_ok=True)
-DATA = ROOT.joinpath("../../../datasets/NEW_WF-CE_database_58332.json")
+DATA = ROOT.joinpath("../../../datasets/WF_CE_database_with_forces.json")
 TRAIN = ROOT.joinpath("train")
 VALIDATE = ROOT.joinpath("validate")
 TEST = ROOT.joinpath("test")
@@ -63,7 +63,7 @@ def save_data(data: List[dict], dest: Union[str, Path]):
     useful_data = [
         {
             "material": d["material"], 
-            #"forces": d["forces"], 
+            "forces": d["forces"], 
             "WF_top": d["WF_top"],
             "WF_bottom": d["WF_bottom"],
             "cleavage_energy": d["cleavage_energy"]
@@ -102,16 +102,18 @@ def get_by_ids(data: List[dict]):
 def main():
     with open(DATA) as f:
         data = json.load(f)
+    
     # Process to my fields
     data = [{
-        "material_id": d["mpid"],
-        "material": eval(d["slab"]),
-        #"forces": d["forces"], 
-        "WF_top": d["WF_top"],
-        "WF_bottom": d["WF_bottom"],
-        "cleavage_energy": d["cleavage_energy"]
+        "material_id": data[d]["mpid"],
+        "material": eval(data[d]["slab"]),
+        "forces": data[d]["forces"], 
+        "WF_top": data[d]["WF_top"],
+        "WF_bottom": data[d]["WF_bottom"],
+        "cleavage_energy": data[d]["cleavage_energy"]
     } for d in data]
     
+
     print(f"Number of total usable datapoints: {len(data)}")
 
     if all([p.joinpath("material_ids.csv").exists() for p in [TRAIN, VALIDATE, TEST]]):
